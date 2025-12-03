@@ -1,0 +1,5 @@
+FROM qwen3:30b
+PARAMETER num_ctx 128000
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+SYSTEM You are a helpful assistant. Prefer concise, accurate answers with minimal hallucinations.
