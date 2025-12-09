@@ -1,37 +1,87 @@
 # Ollama Modelfiles and Benchmark
 
-Build Ollama models with **128k context window** and use them with VS Code + GitHub Copilot.
+Build Ollama models with **custom context windows** (128k, 256k, etc.) and use them with VS Code + GitHub Copilot.
 
 ## Prerequisites
 
-- [Ollama](https://ollama.ai/) installed and running
-- Base models pulled (e.g., `ollama pull qwen3-coder:30b`)
+- [Ollama](https://ollama.ai/) installed
 - VS Code with GitHub Copilot extension
 
-## Quick Start
+## Creating a Custom Context Model (Step-by-Step)
 
-### 1. Build Custom 128k Context Models
+Follow these steps to create any Ollama model with a custom context window:
+
+### Step 1: Start Ollama Server
+
+```powershell
+ollama serve
+```
+
+### Step 2: Pull the Base Model
+
+```powershell
+# Pull the model you want to customize
+ollama pull qwen3-coder:30b      # For coding
+ollama pull qwen3:30b            # For general use
+ollama pull qwen3-vl:32b         # For vision/multimodal
+```
+
+### Step 3: Create a Modelfile
+
+Create a text file named `Modelfile.<your-model-name>` with the following structure:
+
+**Example 1: Coding Model (128k context)**
+```
+FROM qwen3-coder:30b
+PARAMETER num_ctx 128000
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+SYSTEM You are a helpful coding assistant. Prefer clear, correct code with minimal dependencies. Explain briefly when asked.
+```
+
+**Example 2: Vision/Multimodal Model (256k context)**
+```
+FROM qwen3-vl:32b
+PARAMETER num_ctx 256000
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+SYSTEM You are a helpful multimodal assistant with vision capabilities. You can analyze images and provide detailed descriptions, answer questions about visual content, and assist with tasks that require both text and image understanding.
+```
+
+> **Note:** Use hyphens `-` in filenames, not colons `:` (Windows doesn't allow colons in filenames).
+
+### Step 4: Create the Custom Model
 
 ```powershell
 cd ollama
 
-# Create models with 128k context baked in
+# Create model from your Modelfile
 ollama create qwen3-coder-30b-ctx128k -f ./Modelfile.qwen3-coder-30b-ctx128k
-ollama create qwen3-30b-ctx128k -f ./Modelfile.qwen3-30b-ctx128k
-ollama create gpt-oss-latest-ctx128k -f ./Modelfile.gpt-oss-latest-ctx128k
+ollama create qwen3-vl-32b-ctx256k -f ./Modelfile.qwen3-vl-32b-ctx256k
 ```
 
-### 2. Verify Models
+### Step 5: Verify Your Model
 
 ```powershell
 ollama list
-# You should see qwen3-coder-30b-ctx128k, etc.
+# You should see your custom model (e.g., qwen3-coder-30b-ctx128k)
 ```
 
-### 3. Start Ollama Server
+## Quick Start (Using Existing Modelfiles)
+
+If you want to use the pre-made Modelfiles in this repo:
 
 ```powershell
-ollama serve
+cd ollama
+
+# Pull base models first
+ollama pull qwen3-coder:30b
+ollama pull qwen3:30b
+
+# Create custom models
+ollama create qwen3-coder-30b-ctx128k -f ./Modelfile.qwen3-coder-30b-ctx128k
+ollama create qwen3-30b-ctx128k -f ./Modelfile.qwen3-30b-ctx128k
+ollama create gpt-oss-latest-ctx128k -f ./Modelfile.gpt-oss-latest-ctx128k
 ```
 
 ## Using with VS Code + GitHub Copilot
