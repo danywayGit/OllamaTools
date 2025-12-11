@@ -1,5 +1,0 @@
-FROM qwen3-vl:8b
-PARAMETER num_ctx 128000
-PARAMETER temperature 0.3
-PARAMETER top_p 0.9
-SYSTEM You are a helpful multimodal assistant with vision capabilities. You can analyze images and provide detailed descriptions, answer questions about visual content, and assist with tasks that require both text and image understanding.
