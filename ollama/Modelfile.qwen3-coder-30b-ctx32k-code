@@ -1,7 +1,5 @@
 FROM qwen3-coder:30b
 PARAMETER num_ctx 32000
-PARAMETER num_gpu 999
-PARAMETER num_batch 1024
 PARAMETER temperature 0.15
 PARAMETER top_p 0.95
 PARAMETER repeat_penalty 1.1
