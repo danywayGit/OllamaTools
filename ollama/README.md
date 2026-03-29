@@ -58,6 +58,7 @@ cd ollama
 # Create model from your Modelfile
 ollama create qwen3-coder-30b-ctx128k -f ./Modelfile.qwen3-coder-30b-ctx128k
 ollama create qwen3-vl-32b-ctx256k -f ./Modelfile.qwen3-vl-32b-ctx256k
+ollama create qwen3.5-uncensured -f ./Modelfile.qwen3.5-ctx32k-uncensured
 ```
 
 ### Step 5: Verify Your Model
@@ -77,11 +78,13 @@ cd ollama
 # Pull base models first
 ollama pull qwen3-coder:30b
 ollama pull qwen3:30b
+ollama pull qwen3-vl:8b
 
 # Create custom models
 ollama create qwen3-coder-30b-ctx128k -f ./Modelfile.qwen3-coder-30b-ctx128k
 ollama create qwen3-30b-ctx128k -f ./Modelfile.qwen3-30b-ctx128k
 ollama create gpt-oss-latest-ctx128k -f ./Modelfile.gpt-oss-latest-ctx128k
+ollama create qwen3.5-uncensured -f ./Modelfile.qwen3.5-ctx32k-uncensured
 ```
 
 ## Using with VS Code + GitHub Copilot
