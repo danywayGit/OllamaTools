@@ -108,35 +108,62 @@ Once configured, select your 128k model from the Copilot model picker. The 128k 
 
 ## Benchmark
 
-Run latency and throughput benchmarks against your models:
+Run latency and throughput benchmarks against your models.
+
+The script supports two modes:
+- `tasks` (default): scenario-style coding tasks (completion, refactor, explain)
+- `matrix`: parameter sweep across context and batch sizes with ranking + CSV output
 
 ```powershell
-# Basic benchmark (3 rounds per task, warmup enabled)
-./benchmark.ps1 -Model qwen3-coder-30b-ctx128k -NumCtx 128000 -Rounds 3
+# Task mode (default): 3 rounds per task, warmup enabled
+./benchmark.ps1 -Mode tasks -Model qwen3-coder-30b-ctx128k -NumCtx 128000 -Rounds 3
 
-# Skip warmup for faster runs
-./benchmark.ps1 -Model qwen3-coder-30b-ctx128k -Rounds 2 -SkipWarmup
+# Task mode, skip warmup for faster iteration
+./benchmark.ps1 -Mode tasks -Model qwen3-coder-30b-ctx128k -Rounds 2 -SkipWarmup
 
-# Custom temperature/top_p
-./benchmark.ps1 -Model qwen3-30b-ctx128k -Temperature 0.3 -TopP 0.95 -Rounds 3
+# Matrix mode: head-to-head sweep for qwen3.6 27b variants
+./benchmark.ps1 -Mode matrix -Model qwen3.6:27b-q4_K_M -CompareModel qwen3.6-27b-code -MatrixNumCtx 16384,32768 -MatrixNumBatch 256,512 -NumPredict 180 -PauseMs 250
+
+# Matrix mode with custom prompt/system tuning
+./benchmark.ps1 -Mode matrix -Model qwen3.6-27b-code -MatrixPrompt "Write a robust async HTTP retry helper in Python." -SystemPrompt "You are a coding assistant. Return concise production-ready code." -MatrixNumCtx 16384 -MatrixNumBatch 256,512
 ```
 
 ### Benchmark Output
 
-The script runs three tasks (small completion, refactor, explain) and reports:
-- Latency (ms)
-- Tokens generated
-- Throughput (tokens/sec)
+In both modes, the script reports:
+- `total_ms` (end-to-end latency)
+- generated token count
+- prompt throughput (`prompt tok/s`)
+- generation throughput (`gen tok/s`)
 
-Example output:
+`matrix` mode additionally prints:
+- raw result table
+- CSV lines for easy export
+- top 3 ranked configurations (by `gen tok/s`, tie-breaker `total_ms`)
+- context impact (`16k - 32k`) and batch impact (`512 - 256`)
+
+Task mode sample:
 ```
-== Small completion ==
-Warmup...
-Round 1: 14801 ms, 429 tokens, 29 tok/s
-Round 2: 15261 ms, 427 tokens, 28 tok/s
+=== Model: qwen3.6-27b-code (num_ctx=32768) ===
 
-Summary:
-Small completion: avg=15031 ms, avg tokens=428, avg tok/s=28.5
+	-- Small completion --
+Warmup...
+Round 1: total=11742.3 ms, tokens=180, prompt tok/s=504.1, gen tok/s=31.8
+Round 2: total=11406.8 ms, tokens=180, prompt tok/s=497.6, gen tok/s=32.5
+
+===== SUMMARY =====
+Small completion: avg=11,575 ms, avg tokens=180, avg prompt tok/s=500.9, avg gen tok/s=32.1
+```
+
+Matrix mode sample:
+```
+===== TOP 3 (gen tok/s desc, total ms asc) =====
+
+Model            NumCtx NumBatch GenTokS PromptTokS  TotalMs
+-----            ------ -------- ------- ----------  -------
+qwen3.6-27b-code  32768      512   36.05     479.03 11179.50
+qwen3.6-27b-code  32768      256   36.04     391.08 11326.60
+qwen3.6-27b-code  16384      256   32.16     518.51 11858.20
 ```
 
 ## Modelfile Configuration
