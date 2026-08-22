@@ -79,6 +79,7 @@ cd ollama
 ollama pull qwen3-coder:30b
 ollama pull qwen3:30b
 ollama pull qwen3-vl:8b
+ollama pull qwen3.8:27b-q4_K_M
 
 # Create custom models
 ollama create qwen3-coder-30b-ctx128k -f ./Modelfile.qwen3-coder-30b-ctx128k
@@ -86,6 +87,94 @@ ollama create qwen3-30b-ctx128k -f ./Modelfile.qwen3-30b-ctx128k
 ollama create gpt-oss-latest-ctx128k -f ./Modelfile.gpt-oss-latest-ctx128k
 ollama create qwen3.5-uncensured -f ./Modelfile.qwen3.5-ctx32k-uncensured
 ```
+
+## qwen3.8: Code + Finance Models (Thinking & Non-Thinking)
+
+Hybrid Modelfiles built on `qwen3.8:27b-q4_K_M` (18GB, 256K native context) tuned for
+**coding + quantitative finance**. Four context sizes (16k / 20k / 24k / 32k), each in two
+thinking variants. Context is **reduced** from the native 256K to save VRAM and speed up
+inference — no quality loss, just a smaller window.
+
+- `-think` — reasoning enabled (default for Qwen3.8). Better for complex code design and
+  multi-step financial analysis; uses more context/tokens for the reasoning step.
+- `-nothink` — thinking disabled via a system-prompt directive. Rapid, deterministic
+  responses, ideal for high-volume or real-time finance calls.
+
+```powershell
+# Pull the base model first (Run once)
+ollama pull qwen3.8:27b-q4_K_M
+
+# Thinking variants
+ollama create qwen3.8-27b-ctx16k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx16k-code-finance-think
+ollama create qwen3.8-27b-ctx20k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx20k-code-finance-think
+ollama create qwen3.8-27b-ctx24k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx24k-code-finance-think
+ollama create qwen3.8-27b-ctx32k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx32k-code-finance-think
+
+# Non-thinking variants (faster / deterministic)
+ollama create qwen3.8-27b-ctx16k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx16k-code-finance-nothink
+ollama create qwen3.8-27b-ctx20k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx20k-code-finance-nothink
+ollama create qwen3.8-27b-ctx24k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx24k-code-finance-nothink
+ollama create qwen3.8-27b-ctx32k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx32k-code-finance-nothink
+```
+
+Quick smoke-test one model:
+
+```powershell
+ollama run qwen3.8-27b-ctx32k-code-finance-nothink \
+  "Write a Python function computing SMA, RSI(14) and max drawdown from a list of OHLCV dicts."
+```
+
+### Benchmarking the qwen3.8 models
+
+The benchmark script now supports a `-Think` switch to pass the `think` API flag, which is the
+reliable way to control Qwen3.8's reasoning mode (the baked SOMETIMES system-prompt directive
+is bypassed when `-SystemPrompt` overrides it in the API call).
+
+```powershell
+# Fast path: non-thinking model, task mode
+./benchmark.ps1 -Mode tasks -Model qwen3.8-27b-ctx32k-code-finance-nothink -NumCtx 32768 -Rounds 2 -Think off
+
+# Head-to-head thinking vs non-thinking at 16k context
+./benchmark.ps1 -Mode tasks -Model qwen3.8-27b-ctx16k-code-finance-think -CompareModel qwen3.8-27b-ctx16k-code-finance-nothink -NumCtx 16384 -CompareNumCtx 16384 -Think auto
+
+# Parameter/context sweep across all four context sizes
+./benchmark.ps1 -Mode matrix -Model qwen3.8-27b-ctx16k-code-finance-nothink -MatrixNumCtx 16384,20480,24576,32768 -MatrixNumBatch 256,512 -Think off
+```
+
+### qwen3.8 benchmark results (2026-08)
+
+Hardware: local, 27B q4 K_M (~18 GB). Reference Apple-to-Apple gen tok/s through the API with
+the same prompt (max drawdown + RSI(14) in Python).
+
+| Context | Batch | Prompt tok/s | Gen tok/s | Total ms | Notes |
+|--------:|------:|-------------:|----------:|---------:|-------|
+| 16384 | 256 | 215.2 | 33.8 | 18 360 | Latency worst for small ctx |
+| 16384 | 512 | 302.0 | 42.8 | 10 642 | **batch 512 much faster** |
+| 20480 | 512 | 305.8 | **44.3** | 10 444 | Best gen tok/s |
+| 24576 | 256 | 315.5 | 43.8 | 10 540 | |
+| 32768 | 512 | 296.3 | 44.3 | 10 476 | Fastest total; ctx scales w/o collapse |
+
+> **Context impact** (16k → 32k): generation stays ~44 tok/s at batch 512 — context scaling does
+> not collapse throughput through 32k. **Batch 512 is strongly preferred** over 256 (+3 tok/s and
+> much lower latency at small ctx).
+
+**Thinking vs. non-thinking overhead** (identical prompt, `think` flag via API):
+
+| Variant | Eval tokens | Gen tok/s | Total ms | Thinking output |
+|---------|-----------:|----------:|--------:|-----------------|
+| `-think` 16k | 1829 | 42.9 | 43 404 | Reasoning trace (~1 479 chars) |
+| `-nothink` 16k | 2270 | 41.9 | 54 673 | None (direct answer) |
+
+**How to read these numbers:**
+- All 8 variants share the **same base weights + quantization**, so raw generation throughput is
+  uniform (~42-44 tok/s). The differentiators are **context size** and **thinking behavior**.
+- `-think` returns a reasoning trace before the answer (better for complex design/analysis), but
+  thinking token counts are not strictly higher — `-nothink` often elaborates *more in prose*.
+- Choose `-nothink` for routine/fast/call-time work, `-think` for hard multi-step problems.
+
+> **Note:** These models share the same base tag and code+finance system prompt; they differ
+> only in `num_ctx` and the thinking directive. Pick a single `-nothink` size for routine work
+> and a `-think` size for hard problems to avoid duplicating VRAM usage.
 
 ## Using with VS Code + GitHub Copilot
 

@@ -41,7 +41,13 @@ param(
   [string]$MatrixPrompt = "Write a Python LRU cache with type hints and 3 pytest tests.",
   [int[]]$MatrixNumCtx = @(16384, 32768),
   [int[]]$MatrixNumBatch = @(256, 512),
-  [int]$PauseMs = 500
+  [int]$PauseMs = 500,
+  # Thinking control for Qwen3.8+ reasoning models. Passes the `think` API flag.
+  #   auto = leave unset (model default)
+  #   on   = force thinking on  (think=true)
+  #   off  = force thinking off (think=false)
+  [ValidateSet("auto", "on", "off")]
+  [string]$Think = "auto"
 )
 
 function Invoke-OllamaPrompt {
@@ -74,11 +80,24 @@ function Invoke-OllamaPrompt {
       repeat_penalty = $repeatPenalty
       min_p       = $minP
     }
-  } | ConvertTo-Json -Depth 5
+  }
+
+  # Inject the thinking flag (Qwen3.8+ reasoning models) when not "auto".
+  # This is a script-level (parent-scope) variable used via PowerShell dynamic scoping.
+  $thinkOpt = ""
+  if ($script:Think -ne $null -and $script:Think -ne "auto") {
+    if ($script:Think -eq "on")  { $thinkOpt = $true }
+    if ($script:Think -eq "off") { $thinkOpt = $false }
+  }
+  if ($thinkOpt -is [bool]) {
+    $body['think'] = $thinkOpt
+  }
+
+  $bodyJson = $body | ConvertTo-Json -Depth 5
 
   try {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $resp = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -ContentType "application/json" -Body $body
+    $resp = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -ContentType "application/json" -Body $bodyJson
     $sw.Stop()
 
     $tokens = if ($resp.eval_count) { $resp.eval_count } else { 0 }
@@ -129,7 +148,10 @@ if ($CompareModel -ne "") {
     Write-Host ("  Model B : {0} (num_ctx={1})" -f $CompareModel, $CompareNumCtx) -ForegroundColor Cyan
   }
 } else {
-  Write-Host "Benchmarking model: $Model (num_ctx=$NumCtx, temp=$Temperature, top_p=$TopP)" -ForegroundColor Cyan
+  $thinkBanner = ""
+  if ($Think -eq "on")  { $thinkBanner = ", think=on" }
+  if ($Think -eq "off") { $thinkBanner = ", think=off" }
+  Write-Host "Benchmarking model: $Model (num_ctx=$NumCtx, temp=$Temperature, top_p=$TopP$thinkBanner)" -ForegroundColor Cyan
 }
 
 if ($Mode -eq "matrix") {
