@@ -109,12 +109,14 @@ ollama create qwen3.8-27b-ctx16k-code-finance-think   -f ./Modelfile.qwen3.8-27b
 ollama create qwen3.8-27b-ctx20k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx20k-code-finance-think
 ollama create qwen3.8-27b-ctx24k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx24k-code-finance-think
 ollama create qwen3.8-27b-ctx32k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx32k-code-finance-think
+ollama create qwen3.8-27b-ctx64k-code-finance-think   -f ./Modelfile.qwen3.8-27b-ctx64k-code-finance-think
 
 # Non-thinking variants (faster / deterministic)
 ollama create qwen3.8-27b-ctx16k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx16k-code-finance-nothink
 ollama create qwen3.8-27b-ctx20k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx20k-code-finance-nothink
 ollama create qwen3.8-27b-ctx24k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx24k-code-finance-nothink
 ollama create qwen3.8-27b-ctx32k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx32k-code-finance-nothink
+ollama create qwen3.8-27b-ctx64k-code-finance-nothink -f ./Modelfile.qwen3.8-27b-ctx64k-code-finance-nothink
 ```
 
 Quick smoke-test one model:
